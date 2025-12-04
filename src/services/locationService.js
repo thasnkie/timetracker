@@ -9,8 +9,9 @@ export class LocationService {
 
       const options = {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000 // Cache for 1 minute
+        timeout: 15000, // Increased timeout for better accuracy
+        maximumAge: 30000, // Shorter cache for more recent location
+        desiredAccuracy: 10 // Desired accuracy in meters
       };
 
       navigator.geolocation.getCurrentPosition(
@@ -19,6 +20,10 @@ export class LocationService {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy,
+            altitude: position.coords.altitude,
+            altitudeAccuracy: position.coords.altitudeAccuracy,
+            heading: position.coords.heading,
+            speed: position.coords.speed,
             timestamp: new Date().toISOString()
           };
           resolve(locationData);
@@ -103,12 +108,84 @@ export class LocationService {
     
     const { latitude, longitude, address, accuracy } = locationData;
     
+    let displayText = '';
+    
     if (address && address !== 'Address unavailable') {
-      return address;
+      displayText = address;
+    } else {
+      // Fallback to coordinates
+      displayText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
     
-    // Fallback to coordinates
-    return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    // Add accuracy information
+    if (accuracy) {
+      const accuracyText = accuracy < 10 ? 'High' : accuracy < 50 ? 'Medium' : 'Low';
+      displayText += ` (${accuracyText} accuracy: ±${Math.round(accuracy)}m)`;
+    }
+    
+    return displayText;
+  }
+
+  static getLocationAccuracyLevel(accuracy) {
+    if (!accuracy) return { level: 'unknown', color: '#9E9E9E', icon: '📍' };
+    
+    if (accuracy < 10) {
+      return { level: 'high', color: '#4CAF50', icon: '🎯' };
+    } else if (accuracy < 50) {
+      return { level: 'medium', color: '#FF9800', icon: '📍' };
+    } else {
+      return { level: 'low', color: '#f44336', icon: '📍' };
+    }
+  }
+
+  static async watchPosition(callback) {
+    if (!navigator.geolocation) {
+      throw new Error('Geolocation is not supported by this browser');
+    }
+
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 10000 // More frequent updates
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
+        try {
+          const locationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            altitude: position.coords.altitude,
+            timestamp: new Date().toISOString()
+          };
+
+          // Get address
+          try {
+            const address = await this.reverseGeocode(locationData.latitude, locationData.longitude);
+            locationData.address = address;
+          } catch (error) {
+            locationData.address = 'Address unavailable';
+          }
+
+          callback(locationData);
+        } catch (error) {
+          callback(null, error);
+        }
+      },
+      (error) => {
+        callback(null, this.handleLocationError(error));
+      },
+      options
+    );
+
+    return watchId;
+  }
+
+  static stopWatchingPosition(watchId) {
+    if (navigator.geolocation && watchId) {
+      navigator.geolocation.clearWatch(watchId);
+    }
   }
 
   static async requestLocationPermission() {

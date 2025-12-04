@@ -20,6 +20,9 @@ function TimeTracker({ user, onSignOut }) {
   const [selectedMonth, setSelectedMonth] = useState('all'); // 'all' or month object
   const [locationPermission, setLocationPermission] = useState(null); // null, 'granted', 'denied'
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [locationWatchId, setLocationWatchId] = useState(null);
+  const [locationError, setLocationError] = useState(null);
 
   // Update current time every second
   useEffect(() => {
@@ -149,8 +152,57 @@ function TimeTracker({ user, onSignOut }) {
     try {
       const hasPermission = await LocationService.requestLocationPermission();
       setLocationPermission(hasPermission ? 'granted' : 'denied');
+      
+      if (hasPermission) {
+        startLocationWatching();
+      }
     } catch (error) {
       setLocationPermission('denied');
+      setLocationError('Location access denied');
+    }
+  };
+
+  const startLocationWatching = async () => {
+    try {
+      const watchId = await LocationService.watchPosition((locationData, error) => {
+        if (error) {
+          setLocationError(error.message);
+          setCurrentLocation(null);
+        } else {
+          setCurrentLocation(locationData);
+          setLocationError(null);
+        }
+      });
+      setLocationWatchId(watchId);
+    } catch (error) {
+      setLocationError('Unable to track location');
+    }
+  };
+
+  const stopLocationWatching = () => {
+    if (locationWatchId) {
+      LocationService.stopWatchingPosition(locationWatchId);
+      setLocationWatchId(null);
+    }
+  };
+
+  // Cleanup location watching on unmount
+  useEffect(() => {
+    return () => {
+      stopLocationWatching();
+    };
+  }, [locationWatchId]);
+
+  const refreshLocation = async () => {
+    if (locationPermission !== 'granted') return;
+    
+    try {
+      setLocationError(null);
+      const locationData = await LocationService.getLocationWithAddress();
+      setCurrentLocation(locationData);
+    } catch (error) {
+      setLocationError(error.message);
+      setCurrentLocation(null);
     }
   };
 
@@ -259,7 +311,44 @@ function TimeTracker({ user, onSignOut }) {
             {locationPermission && (
               <div className="location-status">
                 {locationPermission === 'granted' ? (
-                  <span className="location-enabled">📍 Location enabled</span>
+                  <div className="location-enabled">
+                    {currentLocation ? (
+                      <div className="current-location">
+                        <div className="location-header">
+                          {LocationService.getLocationAccuracyLevel(currentLocation.accuracy).icon}
+                          <span style={{ color: LocationService.getLocationAccuracyLevel(currentLocation.accuracy).color }}>
+                            Current Location
+                          </span>
+                          <button 
+                            className="refresh-location-btn"
+                            onClick={refreshLocation}
+                            title="Refresh location"
+                          >
+                            🔄
+                          </button>
+                        </div>
+                        <div className="location-details">
+                          {LocationService.formatLocationForDisplay(currentLocation)}
+                        </div>
+                        <div className="location-timestamp">
+                          Updated: {new Date(currentLocation.timestamp).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    ) : locationError ? (
+                      <div className="location-error">
+                        📍 {locationError}
+                        <button 
+                          className="refresh-location-btn"
+                          onClick={refreshLocation}
+                          title="Try again"
+                        >
+                          🔄
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="location-loading">📍 Getting location...</span>
+                    )}
+                  </div>
                 ) : (
                   <span className="location-disabled">
                     📍 Location disabled
