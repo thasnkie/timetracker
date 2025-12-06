@@ -152,6 +152,70 @@ export const getTodayEntries = async (userId = null) => {
   }
 };
 
+// Get time entries for the last 7 days (this week)
+export const getWeekEntries = async (userId = null) => {
+  try {
+    const currentUserId = userId || getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('User not authenticated');
+    }
+
+    const today = new Date();
+    const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    // First try the complex query with index
+    try {
+      const q = query(
+        collection(db, TIME_ENTRIES_COLLECTION),
+        where('userId', '==', currentUserId),
+        where('timestamp', '>=', Timestamp.fromDate(sevenDaysAgo)),
+        where('timestamp', '<', Timestamp.fromDate(endOfToday)),
+        orderBy('timestamp', 'asc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const entries = [];
+      
+      querySnapshot.forEach((doc) => {
+        entries.push({ id: doc.id, ...doc.data() });
+      });
+
+      return entries;
+    } catch (indexError) {
+      // Fallback: Get all user entries and filter in memory
+      const simpleQ = query(
+        collection(db, TIME_ENTRIES_COLLECTION),
+        where('userId', '==', currentUserId)
+      );
+
+      const querySnapshot = await getDocs(simpleQ);
+      const allEntries = [];
+      
+      querySnapshot.forEach((doc) => {
+        allEntries.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Filter for this week's entries in memory
+      const weekEntries = allEntries.filter(entry => {
+        const entryDate = entry.timestamp?.toDate?.() || new Date(entry.timestamp);
+        return entryDate >= sevenDaysAgo && entryDate < endOfToday;
+      });
+
+      // Sort by timestamp ascending in memory
+      weekEntries.sort((a, b) => {
+        const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp);
+        const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp);
+        return aTime.getTime() - bTime.getTime();
+      });
+
+      return weekEntries;
+    }
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Get all time entries for current user (with pagination and optional month filtering)
 export const getAllUserEntries = async (userId = null, limitCount = 50, startAfterDoc = null, monthFilter = null) => {
   try {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { addTimeEntry, getLastTimeEntry, getTodayEntries, getAllUserEntries, getAvailableMonths, calculateWorkTime } from '../firebase/timeService';
+import { addTimeEntry, getLastTimeEntry, getTodayEntries, getWeekEntries, getAllUserEntries, getAvailableMonths, calculateWorkTime } from '../firebase/timeService';
 import { isAuthenticated, getCurrentUserName, isAdmin } from '../firebase/authService';
 import LocationService from '../services/locationService';
 
@@ -65,26 +65,6 @@ function TimeTracker({ user, onSignOut }) {
       setWeekWorkTime(weekTime);
     } catch (error) {
       // Silently handle error
-    }
-  };
-
-  const getWeekEntries = async () => {
-    try {
-      if (!isAuthenticated()) return [];
-
-      // Get entries for last 7 days
-      const entries = [];
-      for (let i = 0; i < 7; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        
-        const dayEntries = await getTodayEntries(); // This gets current user's entries
-        entries.push(...dayEntries);
-      }
-      
-      return entries;
-    } catch (error) {
-      return [];
     }
   };
 
@@ -314,7 +294,7 @@ function TimeTracker({ user, onSignOut }) {
         {user && (
           <div className="user-info">
             <span className="user-name">👤 {user.displayName || getCurrentUserName() || 'User'}</span>
-            <small>• Data synced</small>
+            <small>• {isClocked ? '🟢 Clocked In' : '🔴 Clocked Out'}</small>
             {locationPermission && (
               <div className="location-status">
                 {locationPermission === 'granted' ? (
