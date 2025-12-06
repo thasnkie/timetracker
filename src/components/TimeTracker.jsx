@@ -585,7 +585,7 @@ function TimeTracker({ user, onSignOut }) {
                 >
                   <option value="all">📅 All Months</option>
                   {availableMonths.map((month, index) => (
-                    <option key={index} value="`${month.year}-${month.month}`}>
+                    <option key={index} value={`${month.year}-${month.month}`}>
                       {formatMonth(month)}
                     </option>
                   ))}
