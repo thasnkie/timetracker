@@ -86,10 +86,6 @@ function TimeTracker({ user, onSignOut }) {
         setAllTimeEntries(updatedEntries);
       }
       
-      // Calculate total work time for the loaded entries (exclude 1hr break per day)
-      const workTime = calculateWorkTime(updatedEntries, true);
-      setTotalWorkTime(workTime);
-      
       setAllTimeLastDoc(result.lastDoc);
       setHasMoreEntries(result.hasMore !== false && result.entries.length === 20 && !monthFilter);
     } catch (error) {
