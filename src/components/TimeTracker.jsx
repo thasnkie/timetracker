@@ -260,6 +260,16 @@ function TimeTracker({ user, onSignOut }) {
       }
       grouped[date].push(entry);
     });
+    
+    // Sort entries within each day by timestamp ascending (oldest first)
+    Object.keys(grouped).forEach(date => {
+      grouped[date].sort((a, b) => {
+        const timeA = a.timestamp.toDate();
+        const timeB = b.timestamp.toDate();
+        return timeA - timeB;
+      });
+    });
+    
     return grouped;
   };
 
@@ -599,7 +609,14 @@ function TimeTracker({ user, onSignOut }) {
                       let lastClockIn = null;
                       const daysWithSessions = new Set();
                       
-                      allTimeEntries.forEach(entry => {
+                      // Sort entries by timestamp ascending (oldest first) for proper calculation
+                      const sortedEntries = [...allTimeEntries].sort((a, b) => {
+                        const timeA = a.timestamp.toDate();
+                        const timeB = b.timestamp.toDate();
+                        return timeA - timeB;
+                      });
+                      
+                      sortedEntries.forEach(entry => {
                         if (entry.type === 'clock-in') {
                           lastClockIn = entry.timestamp.toDate();
                         } else if (entry.type === 'clock-out' && lastClockIn) {
