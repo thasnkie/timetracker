@@ -97,11 +97,18 @@ function TimeTracker({ user, onSignOut }) {
       const startAfter = loadMore ? allTimeLastDoc : null;
       const result = await getAllUserEntries(null, 20, startAfter, monthFilter);
       
+      let updatedEntries;
       if (loadMore && !monthFilter) {
-        setAllTimeEntries(prev => [...prev, ...result.entries]);
+        updatedEntries = [...allTimeEntries, ...result.entries];
+        setAllTimeEntries(updatedEntries);
       } else {
-        setAllTimeEntries(result.entries);
+        updatedEntries = result.entries;
+        setAllTimeEntries(updatedEntries);
       }
+      
+      // Calculate total work time for the loaded entries
+      const workTime = calculateWorkTime(updatedEntries);
+      setTotalWorkTime(workTime);
       
       setAllTimeLastDoc(result.lastDoc);
       setHasMoreEntries(result.hasMore !== false && result.entries.length === 20 && !monthFilter);
