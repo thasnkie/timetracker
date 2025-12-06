@@ -601,6 +601,7 @@ function TimeTracker({ user, onSignOut }) {
                       let totalMinutes = 0;
                       let totalSessions = 0;
                       let lastClockIn = null;
+                      const daysWithSessions = new Set();
                       
                       allTimeEntries.forEach(entry => {
                         if (entry.type === 'clock-in') {
@@ -609,9 +610,21 @@ function TimeTracker({ user, onSignOut }) {
                           const diff = entry.timestamp.toDate() - lastClockIn;
                           totalMinutes += Math.floor(diff / (1000 * 60));
                           totalSessions++;
+                          
+                          // Track which days have sessions for break calculation
+                          const clockOutTime = entry.timestamp.toDate();
+                          const dayKey = `${clockOutTime.getFullYear()}-${clockOutTime.getMonth()}-${clockOutTime.getDate()}`;
+                          daysWithSessions.add(dayKey);
+                          
                           lastClockIn = null;
                         }
                       });
+                      
+                      // Subtract 1 hour break per day worked
+                      if (daysWithSessions.size > 0) {
+                        const breakMinutes = daysWithSessions.size * 60;
+                        totalMinutes = Math.max(0, totalMinutes - breakMinutes);
+                      }
                       
                       const totalHours = Math.floor(totalMinutes / 60);
                       const remainingMinutes = totalMinutes % 60;
@@ -629,7 +642,7 @@ function TimeTracker({ user, onSignOut }) {
                           </div>
                           <div className="stat-item">
                             <span>Working Days:</span>
-                            <span>{totalWorkTime.daysWorked || 0}</span>
+                            <span>{daysWithSessions.size}</span>
                           </div>
                         </>
                       );
