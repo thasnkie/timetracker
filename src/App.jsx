@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import { initializeAuth, signInWithGoogle, signOutUser, onAuthChange, getCurrentUserName } from './firebase/authService';
+import { initializeAuth, signInWithGoogle, signOutUser, onAuthChange, getCurrentUserName, isAdmin } from './firebase/authService';
 import TimeTracker from './components/TimeTracker';
 import Admin from './components/Admin';
 
@@ -97,7 +97,13 @@ function App() {
         <Routes>
           <Route 
             path="/" 
-            element={<TimeTracker user={user} onSignOut={handleSignOut} />} 
+            element={
+              isAdmin() ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <TimeTracker user={user} onSignOut={handleSignOut} />
+              )
+            } 
           />
           <Route 
             path="/admin" 
