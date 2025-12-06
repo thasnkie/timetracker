@@ -606,51 +606,49 @@ function TimeTracker({ user, onSignOut }) {
                   })()}
                 </div>
                 
-                {/* Month Summary (when filtering by month) */}
-                {selectedMonth !== 'all' && (
-                  <div className="month-summary">
-                    <h4>📊 {formatMonth(selectedMonth)} Summary</h4>
-                    <div className="month-stats">
-                      {(() => {
-                        let totalMinutes = 0;
-                        let totalSessions = 0;
-                        let lastClockIn = null;
-                        
-                        allTimeEntries.forEach(entry => {
-                          if (entry.type === 'clock-in') {
-                            lastClockIn = entry.timestamp.toDate();
-                          } else if (entry.type === 'clock-out' && lastClockIn) {
-                            const diff = entry.timestamp.toDate() - lastClockIn;
-                            totalMinutes += Math.floor(diff / (1000 * 60));
-                            totalSessions++;
-                            lastClockIn = null;
-                          }
-                        });
-                        
-                        const totalHours = Math.floor(totalMinutes / 60);
-                        const remainingMinutes = totalMinutes % 60;
-                        const monthWorkTime = totalHours > 0 ? `${totalHours}h ${remainingMinutes}m` : `${remainingMinutes}m`;
-                        
-                        return (
-                          <>
-                            <div className="stat-item">
-                              <span>Total Sessions:</span>
-                              <span>{totalSessions}</span>
-                            </div>
-                            <div className="stat-item">
-                              <span>Total Time:</span>
-                              <span className="total-time">{monthWorkTime}</span>
-                            </div>
-                            <div className="stat-item">
-                              <span>Working Days:</span>
-                              <span>{Object.keys(groupEntriesByDate(allTimeEntries)).length}</span>
-                            </div>
-                          </>
-                        );
-                      })()}
+                {/* Summary Section - Always shown */}
+                <div className="month-summary">
+                  <h4>📊 {selectedMonth !== 'all' ? formatMonth(selectedMonth) + ' Summary' : 'All Time Summary'}</h4>
+                  <div className="month-stats">
+                    {(() => {
+                      let totalMinutes = 0;
+                      let totalSessions = 0;
+                      let lastClockIn = null;
+                      
+                      allTimeEntries.forEach(entry => {
+                        if (entry.type === 'clock-in') {
+                          lastClockIn = entry.timestamp.toDate();
+                        } else if (entry.type === 'clock-out' && lastClockIn) {
+                          const diff = entry.timestamp.toDate() - lastClockIn;
+                          totalMinutes += Math.floor(diff / (1000 * 60));
+                          totalSessions++;
+                          lastClockIn = null;
+                        }
+                      });
+                      
+                      const totalHours = Math.floor(totalMinutes / 60);
+                      const remainingMinutes = totalMinutes % 60;
+                      const summaryWorkTime = totalHours > 0 ? `${totalHours}h ${remainingMinutes}m` : `${remainingMinutes}m`;
+                      
+                      return (
+                        <>
+                          <div className="stat-item">
+                            <span>Total Sessions:</span>
+                            <span>{totalSessions}</span>
+                          </div>
+                          <div className="stat-item">
+                            <span>Total Time:</span>
+                            <span className="total-time">{summaryWorkTime}</span>
+                          </div>
+                          <div className="stat-item">
+                            <span>Working Days:</span>
+                            <span>{Object.keys(groupEntriesByDate(allTimeEntries)).length}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                     </div>
                   </div>
-                )}
                 
                 {hasMoreEntries && (
                   <div className="load-more-section">
