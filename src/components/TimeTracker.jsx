@@ -56,12 +56,12 @@ function TimeTracker({ user, onSignOut }) {
       const weekData = await getWeekEntries();
       setWeekEntries(weekData);
 
-      // Calculate total work time
-      const workTime = calculateWorkTime(entries);
+      // Calculate total work time (exclude 1hr break per day)
+      const workTime = calculateWorkTime(entries, true);
       setTotalWorkTime(workTime);
 
-      // Calculate week work time
-      const weekTime = calculateWorkTime(weekData);
+      // Calculate week work time (exclude 1hr break per day)
+      const weekTime = calculateWorkTime(weekData, true);
       setWeekWorkTime(weekTime);
     } catch (error) {
       // Silently handle error
@@ -106,8 +106,8 @@ function TimeTracker({ user, onSignOut }) {
         setAllTimeEntries(updatedEntries);
       }
       
-      // Calculate total work time for the loaded entries
-      const workTime = calculateWorkTime(updatedEntries);
+      // Calculate total work time for the loaded entries (exclude 1hr break per day)
+      const workTime = calculateWorkTime(updatedEntries, true);
       setTotalWorkTime(workTime);
       
       setAllTimeLastDoc(result.lastDoc);
@@ -313,7 +313,7 @@ function TimeTracker({ user, onSignOut }) {
         </div>
         {user && (
           <div className="user-info">
-            <span className="user-name">👤 {getCurrentUserName() || 'User'}</span>
+            <span className="user-name">👤 {user.displayName || getCurrentUserName() || 'User'}</span>
             <small>• Data synced</small>
             {locationPermission && (
               <div className="location-status">
@@ -554,9 +554,10 @@ function TimeTracker({ user, onSignOut }) {
                       const dayEntries = groupedEntries[dateStr];
                       const dayDate = new Date(dateStr);
                       
-                      // Calculate daily work time
+                      // Calculate daily work time (exclude 1hr break)
                       let dailyMinutes = 0;
                       let lastClockIn = null;
+                      let completeSessions = 0;
                       
                       dayEntries.forEach(entry => {
                         if (entry.type === 'clock-in') {
@@ -564,9 +565,15 @@ function TimeTracker({ user, onSignOut }) {
                         } else if (entry.type === 'clock-out' && lastClockIn) {
                           const diff = entry.timestamp.toDate() - lastClockIn;
                           dailyMinutes += Math.floor(diff / (1000 * 60));
+                          completeSessions++;
                           lastClockIn = null;
                         }
                       });
+                      
+                      // Subtract 1 hour break if there are complete sessions
+                      if (completeSessions > 0) {
+                        dailyMinutes = Math.max(0, dailyMinutes - 60);
+                      }
                       
                       const dailyHours = Math.floor(dailyMinutes / 60);
                       const remainingMinutes = dailyMinutes % 60;
@@ -642,7 +649,7 @@ function TimeTracker({ user, onSignOut }) {
                           </div>
                           <div className="stat-item">
                             <span>Working Days:</span>
-                            <span>{Object.keys(groupEntriesByDate(allTimeEntries)).length}</span>
+                            <span>{totalWorkTime.daysWorked || 0}</span>
                           </div>
                         </>
                       );

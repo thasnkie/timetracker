@@ -385,9 +385,10 @@ export const getAllUsers = async () => {
 };
 
 // Calculate total work time from entries
-export const calculateWorkTime = (entries) => {
+export const calculateWorkTime = (entries, excludeBreak = false) => {
   let totalMinutes = 0;
   let clockInTime = null;
+  const daysWorked = new Set();
 
   // Sort entries by timestamp to ensure proper order
   const sortedEntries = [...entries].sort((a, b) => {
@@ -405,8 +406,19 @@ export const calculateWorkTime = (entries) => {
       const diffInMs = entryTime - clockInTime;
       const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
       totalMinutes += diffInMinutes;
+      
+      // Track which days have complete sessions
+      const dayKey = `${entryTime.getFullYear()}-${entryTime.getMonth()}-${entryTime.getDate()}`;
+      daysWorked.add(dayKey);
+      
       clockInTime = null; // Reset after successful pair
     }
+  }
+
+  // Subtract 1 hour break time per day worked if excludeBreak is true
+  if (excludeBreak && daysWorked.size > 0) {
+    const breakMinutes = daysWorked.size * 60; // 1 hour per day
+    totalMinutes = Math.max(0, totalMinutes - breakMinutes);
   }
 
   const hours = Math.floor(totalMinutes / 60);
@@ -416,6 +428,7 @@ export const calculateWorkTime = (entries) => {
     totalMinutes,
     hours,
     minutes,
-    formattedTime: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+    formattedTime: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`,
+    daysWorked: daysWorked.size
   };
 };
