@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllTimeEntries, getAllUsers, calculateWorkTime, getTodayEntries } from '../firebase/timeService';
-import { isAdmin, getCurrentUserEmail } from '../firebase/authService';
+import { isAdmin, getCurrentUserEmail, signOutUser } from '../firebase/authService';
 import './Admin.css';
 
 function Admin() {
@@ -201,6 +201,15 @@ function Admin() {
     };
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      window.location.href = '/';
+    } catch (error) {
+      // Silently handle error
+    }
+  };
+
   return (
     <div className="admin-container-pc">
       {/* Sidebar */}
@@ -244,6 +253,9 @@ function Admin() {
           </div>
           <button onClick={() => window.location.href = '/'} className="sidebar-back-btn">
             ← Back to App
+          </button>
+          <button onClick={handleSignOut} className="sidebar-signout-btn">
+            🚪 Sign Out
           </button>
         </div>
       </div>

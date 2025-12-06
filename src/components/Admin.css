@@ -114,10 +114,29 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.9rem;
+  margin-bottom: 0.5rem;
 }
 
 .sidebar-back-btn:hover {
   background: rgba(255,255,255,0.2);
+}
+
+.sidebar-signout-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sidebar-signout-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
 }
 
 /* Main Content Area */
