@@ -18,11 +18,26 @@ function TimeTracker({ user, onSignOut }) {
   const [hasMoreEntries, setHasMoreEntries] = useState(true);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('all'); // 'all' or month object
+  const [selectedPeriod, setSelectedPeriod] = useState('full'); // 'full', 'first-half', 'second-half'
   const [locationPermission, setLocationPermission] = useState(null); // null, 'granted', 'denied'
   const [gettingLocation, setGettingLocation] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationWatchId, setLocationWatchId] = useState(null);
   const [locationError, setLocationError] = useState(null);
+  const [notes, setNotes] = useState('');
+  const [project, setProject] = useState('');
+  const [showNotesModal, setShowNotesModal] = useState(false);
+
+  // Predefined project list
+  const projects = [
+    'General',
+    'Development',
+    'Marketing',
+    'Support',
+    'Meetings',
+    'Training',
+    'Other'
+  ];
 
   // Update current time every second
   useEffect(() => {
@@ -109,9 +124,11 @@ function TimeTracker({ user, onSignOut }) {
     const value = event.target.value;
     if (value === 'all') {
       setSelectedMonth('all');
+      setSelectedPeriod('full'); // Reset period when viewing all months
     } else {
       const [year, month] = value.split('-').map(Number);
       setSelectedMonth({ year, month });
+      setSelectedPeriod('full'); // Reset to full month when changing months
     }
     
     // Reset pagination and reload entries
@@ -208,22 +225,42 @@ function TimeTracker({ user, onSignOut }) {
 
   const handleTimeAction = async () => {
     if (loading || !isAuthenticated()) return;
+    
+    // Show notes modal before proceeding
+    setShowNotesModal(true);
+  };
+  
+  const confirmTimeAction = async () => {
+    if (loading || !isAuthenticated()) return;
 
     setLoading(true);
+    setShowNotesModal(false);
+    
     try {
       const action = isClocked ? 'clock-out' : 'clock-in';
       
       // Get location data if permission is granted
       const locationData = await getLocationForTimeEntry();
       
-      await addTimeEntry(action, null, locationData);
+      await addTimeEntry(action, null, locationData, notes, project);
       setIsClocked(!isClocked);
+      
+      // Clear notes and project after submission
+      setNotes('');
+      setProject('');
+      
       await loadTimeData(); // Refresh data
     } catch (error) {
       alert('Failed to record time. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
+  };
+  
+  const cancelTimeAction = () => {
+    setShowNotesModal(false);
+    setNotes('');
+    setProject('');
   };
 
   const formatTime = (date) => {
@@ -253,7 +290,24 @@ function TimeTracker({ user, onSignOut }) {
   // Group entries by date for better display
   const groupEntriesByDate = (entries) => {
     const grouped = {};
-    entries.forEach(entry => {
+    
+    // Filter entries by selected period if a specific month is selected
+    let filteredEntries = entries;
+    if (selectedMonth !== 'all' && selectedPeriod !== 'full') {
+      filteredEntries = entries.filter(entry => {
+        const entryDate = entry.timestamp.toDate();
+        const day = entryDate.getDate();
+        
+        if (selectedPeriod === 'first-half') {
+          return day >= 1 && day <= 15;
+        } else if (selectedPeriod === 'second-half') {
+          return day >= 16;
+        }
+        return true;
+      });
+    }
+    
+    filteredEntries.forEach(entry => {
       const date = entry.timestamp.toDate().toDateString();
       if (!grouped[date]) {
         grouped[date] = [];
@@ -477,6 +531,18 @@ function TimeTracker({ user, onSignOut }) {
                               '—'
                             }
                           </span>
+                          {(entry.project || entry.notes) && (
+                            <div className="entry-metadata" style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                              {entry.project && (
+                                <span className="entry-project">📁 {entry.project}</span>
+                              )}
+                              {entry.notes && (
+                                <span className="entry-notes" style={{ marginLeft: entry.project ? '0.5rem' : '0' }}>
+                                  💬 {entry.notes}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     });
@@ -519,11 +585,26 @@ function TimeTracker({ user, onSignOut }) {
                 >
                   <option value="all">📅 All Months</option>
                   {availableMonths.map((month, index) => (
-                    <option key={index} value={`${month.year}-${month.month}`}>
+                    <option key={index} value="`${month.year}-${month.month}`}>
                       {formatMonth(month)}
                     </option>
                   ))}
                 </select>
+                
+                {/* Period Filter (only show when specific month is selected) */}
+                {selectedMonth !== 'all' && (
+                  <select 
+                    id="period-select" 
+                    value={selectedPeriod}
+                    onChange={(e) => setSelectedPeriod(e.target.value)}
+                    className="period-selector"
+                    style={{ marginLeft: '0.5rem' }}
+                  >
+                    <option value="full">📅 Full Month</option>
+                    <option value="first-half">📅 1st - 15th</option>
+                    <option value="second-half">📅 16th - End</option>
+                  </select>
+                )}
               </div>
             )}
             {loadingAllTime && allTimeEntries.length === 0 ? (
@@ -589,6 +670,16 @@ function TimeTracker({ user, onSignOut }) {
                                   <div className="entry-location" title={location}>
                                     📍 {location}
                                   </div>
+                                  {(entry.project || entry.notes) && (
+                                    <div className="entry-metadata">
+                                      {entry.project && (
+                                        <span className="entry-project">📁 {entry.project}</span>
+                                      )}
+                                      {entry.notes && (
+                                        <div className="entry-notes">💬 {entry.notes}</div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -601,7 +692,10 @@ function TimeTracker({ user, onSignOut }) {
                 
                 {/* Summary Section - Always shown */}
                 <div className="month-summary">
-                  <h4>📊 {selectedMonth !== 'all' ? formatMonth(selectedMonth) + ' Summary' : 'All Time Summary'}</h4>
+                  <h4>📊 {selectedMonth !== 'all' ? 
+                    `${formatMonth(selectedMonth)} ${selectedPeriod === 'first-half' ? '(1st-15th)' : selectedPeriod === 'second-half' ? '(16th-End)' : ''} Summary` : 
+                    'All Time Summary'
+                  }</h4>
                   <div className="month-stats">
                     {(() => {
                       let totalMinutes = 0;
@@ -695,6 +789,58 @@ function TimeTracker({ user, onSignOut }) {
           </>
         )}
       </div>
+      
+      {/* Notes and Project Modal */}
+      {showNotesModal && (
+        <div className="modal-overlay" onClick={cancelTimeAction}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>{isClocked ? '🔴 Clocking Out' : '🟢 Clocking In'}</h3>
+            
+            <div className="form-group">
+              <label htmlFor="project-select">Project (Optional):</label>
+              <select 
+                id="project-select"
+                value={project}
+                onChange={(e) => setProject(e.target.value)}
+                className="project-select"
+              >
+                <option value="">-- Select Project --</option>
+                {projects.map((proj, index) => (
+                  <option key={index} value={proj}>{proj}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="notes-input">Notes (Optional):</label>
+              <textarea
+                id="notes-input"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="What are you working on?"
+                className="notes-input"
+                rows="3"
+              />
+            </div>
+            
+            <div className="modal-actions">
+              <button 
+                className="btn-cancel"
+                onClick={cancelTimeAction}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-confirm"
+                onClick={confirmTimeAction}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : isClocked ? 'Clock Out' : 'Clock In'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

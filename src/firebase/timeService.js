@@ -6,7 +6,7 @@ import { getCurrentUserId, getCurrentUserName, getCurrentUserEmail } from './aut
 const TIME_ENTRIES_COLLECTION = 'timeEntries';
 
 // Add a new time entry (clock in or clock out)
-export const addTimeEntry = async (type, timestamp = null, locationData = null) => {
+export const addTimeEntry = async (type, timestamp = null, locationData = null, notes = '', project = '') => {
   try {
     const userId = getCurrentUserId();
     const userName = getCurrentUserName();
@@ -23,6 +23,8 @@ export const addTimeEntry = async (type, timestamp = null, locationData = null) 
       userName: userName || 'Unknown User',
       userEmail: userEmail || 'no-email@example.com',
       location: locationData || null, // Store location data if available
+      notes: notes || '', // Optional notes
+      project: project || '', // Optional project tag
       createdAt: Timestamp.now()
     };
 
